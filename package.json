@@ -20,9 +20,11 @@
   "homepage": "https://github.com/evaldovega/backend-basic#readme",
   "dependencies": {
     "@condor-labs/mongodb": "^1.0.16",
+    "array.prototype.flatmap": "^1.2.4",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
+    "elasticsearch": "^16.7.2",
     "express": "^4.17.1",
     "mongoose": "^5.11.8"
   },

@@ -1,4 +1,6 @@
 const router = require("express").Router();
+const mongoose = require("mongoose");
+const elasticsearch = require("../db/elasticsearch");
 
 const {
   queryStringToFilters,
@@ -38,14 +40,18 @@ const ENDPOINT = process.env.BASE_URL + "users";
         rows.forEach((row) => {
           const columns = row.split("|");
           bulk.push({
+            id: new mongoose.Types.ObjectId().toString(),
             fullname: columns[0],
             city: columns[1],
             email: columns[2],
           });
         });
 
-        User.insertMany(bulk).then((items) => {
-          console.log("Record insertes");
+        elasticsearch.initUsers(bulk).then(() => {
+          console.log("Elasticsearch data indexed");
+          User.insertMany(bulk).then((items) => {
+            console.log("Record insertes");
+          });
         });
       });
     } catch (error) {
@@ -107,6 +113,17 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/fast", async (req, res) => {
+  try {
+    const items = await elasticsearch.search("users", { q: req.query.q });
+    console.log(items);
+    res.json({ status: "pass", items: items });
+  } catch (error) {
+    res.status(500);
+    res.json({ status: "fail", error_description: error.toString() });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const item = await User.findOne({ _id: req.params.id });
@@ -121,6 +138,7 @@ router.post("/", async (req, res) => {
   try {
     const item = new User(req.body);
     await item.save();
+    elasticsearch.insert("users", item._doc);
     res.json({ item, ...{ path: `/users/${item._id}` } });
   } catch (error) {
     res.status(500);
@@ -137,6 +155,7 @@ router.put("/:id", async (req, res) => {
         new: true,
       }
     );
+    elasticsearch.update("users", item._id, item._doc);
     res.json({ item, ...{ path: `/users/${item._id}` } });
   } catch (error) {
     res.status(500);
