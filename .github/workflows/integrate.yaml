@@ -3,7 +3,10 @@ name: continue integration with node.js
 on:
   pull_request:
     branches:
-      - master
+      - evaldo
+  push:
+    branches:
+      - evaldo
 
 jobs:
   ci_to_master:
