@@ -14,7 +14,9 @@ const queryStringToFilters = (query) => {
       field != "" &&
       key != "limit" &&
       key != "offset" &&
-      key != "size"
+      key != "size" &&
+      key != "sort" &&
+      key != "fields"
     ) {
       query_string.push(`&${key}=${field}`);
       if ((exp = field.match(/\*(.+)\*/))) {
@@ -35,11 +37,36 @@ const queryStringToFilters = (query) => {
   return { filters, query_string };
 };
 
-const generatePagination = (ENDPOINT, query_string, offset, limit, size) => {
+const generateSorts = (sort) => {
+  let _sort = sort.split(",");
+  let _sortResult = {};
+  _sort.forEach((s) => {
+    if (s.startsWith("-")) {
+      _sortResult[[s.slice(1)]] = -1;
+    } else {
+      _sortResult[[s]] = 1;
+    }
+  });
+  console.log(_sortResult);
+  return _sortResult;
+};
+
+const generatePagination = (
+  ENDPOINT,
+  query_string,
+  offset,
+  limit,
+  sort,
+  fields,
+  size
+) => {
   const response = {};
 
-  response.offset = offset;
+  offset = offset < OFFSET_MIN ? OFFSET_MIN : offset;
+  limit = limit < LIMIT_MIN ? LIMIT_DEFAULT : limit;
+
   response.limit = limit;
+  response.offset = offset;
 
   const pages = Math.ceil(size / limit);
 
@@ -52,18 +79,20 @@ const generatePagination = (ENDPOINT, query_string, offset, limit, size) => {
   if (response.current_page < response.pages) {
     response.next = `${ENDPOINT}?offset=${
       response.current_page * limit
-    }&limit=${limit}&size=${size}${query_string}`;
+    }&limit=${limit}&size=${size}${query_string}&sort=${sort}&fields=${fields}`;
   }
 
   if (response.current_page > 1) {
     response.previus = `${ENDPOINT}?offset=${
       (response.current_page - 2) * limit
-    }&limit=${limit}&size=${size}${query_string}`;
+    }&limit=${limit}&size=${size}${query_string}&sort=${sort}&fields=${fields}`;
   }
+
   response.last = `${ENDPOINT}?offset=${
     (response.pages - 1) * limit
-  }&limit=${limit}&size=${size}${query_string}`;
-  response.first = `${ENDPOINT}?offset=0&limit=${limit}`;
+  }&limit=${limit}&size=${size}${query_string}&sort=${sort}&fields=${fields}`;
+
+  response.first = `${ENDPOINT}?offset=0&limit=${limit}&sort=${sort}&fields=${fields}`;
 
   return response;
 };
@@ -75,4 +104,5 @@ module.exports = {
   LIMIT_DEFAULT,
   queryStringToFilters,
   generatePagination,
+  generateSorts,
 };

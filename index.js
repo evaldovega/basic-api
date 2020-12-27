@@ -7,14 +7,14 @@ const connect = require("./src/db");
 const app = express();
 
 // create application/x-www-form-urlencoded parser
-/*
+
 app.use(
   bodyParser.urlencoded({
     extended: true,
     limit: "100mb",
     parameterLimit: 100000,
   })
-);*/
+);
 app.use(bodyParser.json());
 
 app.use(cors({}));

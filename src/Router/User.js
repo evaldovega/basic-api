@@ -1,13 +1,15 @@
+// @ts-nocheck
 const router = require("express").Router();
 
 const {
   queryStringToFilters,
   generatePagination,
+  generateSorts,
 } = require("../Condorlabs/guidelines");
 
 const User = require("../db/Models/User");
 
-const ENDPOINT = process.env.BASE_URL + "users";
+const ENDPOINT = "users";
 
 (async () => {
   const total_record = await User.estimatedDocumentCount();
@@ -58,24 +60,36 @@ router.get("/", async (req, res) => {
   try {
     const { query } = req;
 
-    let { filters, query_string } = queryStringToFilters(query);
-    console.log("Filters ", filters);
     let response = { status: "pass" };
+
+    const aggregate = [];
 
     let items = [];
 
+    let { filters, query_string } = queryStringToFilters(query);
+    aggregate.push({ $match: filters });
+
+    query.sort = query.sort ? query.sort : "";
+
+    if (query.sort != "") {
+      const sorts = generateSorts(query.sort);
+      if (Object.keys(sorts).length > 0) {
+        console.log(sorts);
+        aggregate.push({ $sort: sorts });
+      }
+    }
+
     if (query.offset && query.limit) {
-      // @ts-ignore
       query.limit = parseInt(query.limit);
 
-      // @ts-ignore
       query.offset = parseInt(query.offset);
 
-      // @ts-ignore
-      items = await User.find(filters).skip(query.offset).limit(query.limit);
+      aggregate.push({ $skip: query.offset });
+      aggregate.push({ $limit: query.limit });
 
       query.size = query.size ? parseInt(query.size) : 0;
 
+      //get total record
       const size =
         query.size > 0 ? query.size : await User.countDocuments(filters);
 
@@ -86,15 +100,31 @@ router.get("/", async (req, res) => {
           query_string.join(""),
           query.offset,
           query.limit,
+          query.sort,
+          query.fields,
           size
         ),
       };
-    } else {
-      items = await User.find(filters);
     }
 
+    //Project fields
+    if (query.fields && query.fields != "") {
+      const fields = query.fields.split(",");
+      const _fields = {};
+      fields.forEach((f) => {
+        _fields[f] = 1;
+      });
+      if (fields.length > 0) {
+        aggregate.push({ $project: _fields });
+      }
+    }
+
+    console.log(aggregate);
+    items = await User.aggregate(aggregate);
+
+    //Add link href to detail for each user
     items = items.map((item) => ({
-      ...item._doc,
+      ...item,
       href: `/users/${item._id}`,
     }));
 
@@ -121,7 +151,7 @@ router.post("/", async (req, res) => {
   try {
     const item = new User(req.body);
     await item.save();
-    res.json({ item, ...{ path: `/users/${item._id}` } });
+    res.json({ ...item._doc, ...{ path: `/users/${item._id}` } });
   } catch (error) {
     res.status(500);
     res.json({ status: "fail", error_description: error.toString() });
@@ -137,7 +167,7 @@ router.put("/:id", async (req, res) => {
         new: true,
       }
     );
-    res.json({ item, ...{ path: `/users/${item._id}` } });
+    res.json({ ...item._doc, ...{ path: `/users/${item._id}` } });
   } catch (error) {
     res.status(500);
     res.json({ status: "fail", error_description: error.toString() });
