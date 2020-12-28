@@ -70,6 +70,7 @@ router.get("/", async (req, res) => {
     aggregate.push({ $match: filters });
 
     query.sort = query.sort ? query.sort : "";
+    query.fields = query.fields ? query.fields : "";
 
     if (query.sort != "") {
       const sorts = generateSorts(query.sort);
