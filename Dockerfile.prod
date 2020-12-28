@@ -4,13 +4,11 @@ LABEL maintainer="Evaldo Vega <evega@condorlabs.io>"
 
 RUN mkdir -p /usr/src/app
 
+COPY . .
+
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-
 RUN npm install
-
-COPY . .
 
 EXPOSE 3000
 
